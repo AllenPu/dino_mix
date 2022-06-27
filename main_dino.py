@@ -313,6 +313,13 @@ def train_one_epoch(student, teacher, teacher_without_ddp, dino_loss, data_loade
 
         # move images to gpu
         images = [im.cuda(non_blocking=True) for im in images]
+        # 2 images in comparsion
+        # one in 0.75 and another in 0.25
+        # half size of the iamges
+        batch_size_half = int(images[0].shape[0]/2)
+        # first 50% of data and next 50% of data
+        images_front = [im[:batch_size_half] for im in images]
+        images_rear = [im[:batch_size_half] for im in images]
         # teacher and student forward passes + compute dino loss
         with torch.cuda.amp.autocast(fp16_scaler is not None):
             teacher_output = teacher(images[:2])  # only the 2 global views pass through the teacher
@@ -459,8 +466,8 @@ class DataAugmentationDINO(object):
         crops = []
         crops.append(self.global_transfo1(image))
         crops.append(self.global_transfo2(image))
-        for _ in range(self.local_crops_number):
-            crops.append(self.local_transfo(image))
+        #for _ in range(self.local_crops_number):
+        #    crops.append(self.local_transfo(image))
         return crops
 
 
