@@ -313,13 +313,17 @@ def train_one_epoch(student, teacher, teacher_without_ddp, dino_loss, data_loade
 
         # move images to gpu
         images = [im.cuda(non_blocking=True) for im in images]
-        # 2 images in comparsion
+        # 2 images in comparsion, ONLY ONE IMAGE IN THE LIST []
         # one in 0.75 and another in 0.25
         # half size of the iamges
         batch_size_half = int(images[0].shape[0]/2)
         # first 50% of data and next 50% of data
         images_front = [im[:batch_size_half] for im in images]
         images_rear = [im[:batch_size_half] for im in images]
+        image_front_view_1, image_front_view_2 = images_front[0], images_front[1]
+        image_rear_view_1, image_rear_view_2 = images_rear[0], images_rear[1]
+        mix_view_1 = 0.75*image_front_view_1 + 0.25*image_rear_view_1
+        mix_view_2 = 0.75*image_front_view_2 + 0.25*image_rear_view_2
         # teacher and student forward passes + compute dino loss
         with torch.cuda.amp.autocast(fp16_scaler is not None):
             teacher_output = teacher(images[:2])  # only the 2 global views pass through the teacher
