@@ -389,7 +389,8 @@ class DINOLoss(nn.Module):
         super().__init__()
         self.student_temp = student_temp
         self.center_momentum = center_momentum
-        self.ncrops = ncrops
+        #self.ncrops = ncrops
+        self.ncrops = 1  # two mixed up
         self.register_buffer("center", torch.zeros(1, out_dim))
         # we apply a warm up for the teacher temperature because
         # a too high temperature makes the training instable at the beginning
@@ -412,7 +413,15 @@ class DINOLoss(nn.Module):
         teacher_out = teacher_out.detach().chunk(2)
 
         total_loss = 0
-        n_loss_terms = 0
+        n_loss_terms = 2
+        
+        loss_1 = 0.75 * torch.sum(-teacher_out[0] * \
+                               F.log_softmax(student_out, dim=-1), dim=-1)
+        loss_2 = 0.25 * torch.sum(-teacher_out[1] * \
+                                  F.log_softmax(student_out, dim=-1), dim=-1)
+        total_loss = loss_1.mean() + loss_2.mean()
+        total_loss /= n_loss_terms
+        '''
         for iq, q in enumerate(teacher_out):
             for v in range(len(student_out)):
                 if v == iq:
@@ -423,6 +432,7 @@ class DINOLoss(nn.Module):
                 n_loss_terms += 1
         total_loss /= n_loss_terms
         self.update_center(teacher_output)
+        '''
         return total_loss
 
     @torch.no_grad()
