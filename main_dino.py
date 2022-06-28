@@ -320,14 +320,25 @@ def train_one_epoch(student, teacher, teacher_without_ddp, dino_loss, data_loade
         # first 50% of data and next 50% of data
         images_front = [im[:batch_size_half] for im in images]
         images_rear = [im[:batch_size_half] for im in images]
+        # view 1 & view 2
         image_front_view_1, image_front_view_2 = images_front[0], images_front[1]
         image_rear_view_1, image_rear_view_2 = images_rear[0], images_rear[1]
+        # mix up
         mix_view_1 = 0.75*image_front_view_1 + 0.25*image_rear_view_1
         mix_view_2 = 0.75*image_front_view_2 + 0.25*image_rear_view_2
+        # concat back to the list
+        mix_view = [torch.cat([mix_view_1, mix_view_2], dim = 0)]
+        teacher_view = [torch.cat([image_front_view_1, image_front_view_2], dim = 0), \
+                                torch.cat([image_rear_view_1, image_rear_view_2], dim = 0) ]
+        
         # teacher and student forward passes + compute dino loss
         with torch.cuda.amp.autocast(fp16_scaler is not None):
-            teacher_output = teacher(images[:2])  # only the 2 global views pass through the teacher
-            student_output = student(images)
+            # revised from 
+            #       teacher_output = teacher(images[:2])
+            #       student_output = student(images)
+            # to :
+            teacher_output = teacher(teacher_view)  # only the 2 global views pass through the teacher
+            student_output = student(mix_view)
             loss = dino_loss(student_output, teacher_output, epoch)
 
         if not math.isfinite(loss.item()):
